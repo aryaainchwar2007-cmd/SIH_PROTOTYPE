@@ -41,10 +41,10 @@ export default function GisMapViewer({
 
     mapInstanceRef.current = map;
 
-    // Clean Enterprise Light Basemap (CartoDB Positron)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    // Public OpenStreetMap tile provider (no API key required)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      subdomains: 'abcd'
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
     // Layer Group 1: Red Zones (Polygons)

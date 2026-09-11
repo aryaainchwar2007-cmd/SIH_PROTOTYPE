@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Home,
   ShieldAlert,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import KpiCard from '../components/common/KpiCard';
 import GisMapViewer from '../components/map/GisMapViewer';
+import { api } from '../services/api';
 import { KPI_METRICS, VULNERABLE_HABITATIONS, CANDIDATE_RELOCATION_SITES } from '../data/mockData';
 
 export default function Dashboard({
@@ -19,11 +20,37 @@ export default function Dashboard({
   onSelectSite,
   onNavigate
 }) {
-  const criticalHabitations = VULNERABLE_HABITATIONS.filter(
-    (h) => h.riskTier === 'Critical'
-  ).slice(0, 5);
+  const [kpis, setKpis] = useState(KPI_METRICS);
+  const [criticalHabitations, setCriticalHabitations] = useState(
+    () => VULNERABLE_HABITATIONS.filter((h) => h.riskTier === 'Critical').slice(0, 5)
+  );
+  const [topSites, setTopSites] = useState(() => CANDIDATE_RELOCATION_SITES.slice(0, 3));
 
-  const topSites = CANDIDATE_RELOCATION_SITES.slice(0, 3);
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDashboardData() {
+      try {
+        const [kpiData, habData, sitesData] = await Promise.all([
+          api.getKPIs(),
+          api.getHabitations({ riskTier: 'Critical', limit: 5 }),
+          api.getRelocationSites()
+        ]);
+        if (isMounted) {
+          if (kpiData) setKpis(kpiData);
+          if (habData && habData.length > 0) {
+            setCriticalHabitations(habData.filter((h) => h.riskTier === 'Critical').slice(0, 5));
+          }
+          if (sitesData && sitesData.length > 0) {
+            setTopSites(sitesData.slice(0, 3));
+          }
+        }
+      } catch (err) {
+        console.warn('Dashboard data fetch failed, using fallback:', err);
+      }
+    }
+    loadDashboardData();
+    return () => { isMounted = false; };
+  }, []);
 
   return (
     <div>
@@ -51,7 +78,7 @@ export default function Dashboard({
       <div className="kpi-grid">
         <KpiCard
           title="Total Monitored Habitations"
-          value={KPI_METRICS.totalHabitations}
+          value={kpis.totalHabitations}
           subtitle="Across 5 disaster corridors"
           icon={Home}
           variant="info"
@@ -59,7 +86,7 @@ export default function Dashboard({
 
         <KpiCard
           title="High-Risk Habitations"
-          value={KPI_METRICS.highRiskHabitations}
+          value={kpis.highRiskHabitations}
           subtitle="Score &ge; 55.0 threshold"
           icon={AlertTriangle}
           variant="high"
@@ -68,7 +95,7 @@ export default function Dashboard({
 
         <KpiCard
           title="Critical / Red-Zone Habitations"
-          value={KPI_METRICS.criticalRedZoneHabitations}
+          value={kpis.criticalRedZoneHabitations}
           subtitle="Requires Immediate Relocation"
           icon={ShieldAlert}
           variant="critical"
@@ -77,7 +104,7 @@ export default function Dashboard({
 
         <KpiCard
           title="Population at Critical Risk"
-          value={KPI_METRICS.populationExposed}
+          value={kpis.populationExposed}
           subtitle="Exposed to slope & surge"
           icon={Users}
           variant="critical"
@@ -85,7 +112,7 @@ export default function Dashboard({
 
         <KpiCard
           title="Candidate Relocation Sites"
-          value={KPI_METRICS.potentialRelocationSites}
+          value={kpis.potentialRelocationSites}
           subtitle="64 verified safe parcels"
           icon={MapPin}
           variant="safe"
@@ -124,7 +151,7 @@ export default function Dashboard({
               className="btn btn-secondary btn-sm"
               onClick={() => onNavigate('priority-planning')}
             >
-              Full Queue ({KPI_METRICS.immediateRelocationQueue})
+              Full Queue ({kpis.immediateRelocationQueue})
             </button>
           </div>
 
@@ -177,7 +204,7 @@ export default function Dashboard({
               className="btn btn-secondary btn-sm"
               onClick={() => onNavigate('relocation-sites')}
             >
-              View All ({KPI_METRICS.potentialRelocationSites})
+              View All ({kpis.potentialRelocationSites})
             </button>
           </div>
 

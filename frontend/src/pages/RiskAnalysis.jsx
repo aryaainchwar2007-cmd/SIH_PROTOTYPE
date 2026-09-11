@@ -1,9 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, AlertTriangle, ShieldAlert, Layers, Droplets, Mountain } from 'lucide-react';
+import { api } from '../services/api';
 import { RISK_ANALYTICS_DATA, DISTRICT_PROFILES } from '../data/mockData';
 
 export default function RiskAnalysis({ onNavigate }) {
-  const { distribution, hazardContributions, districtComparisons } = RISK_ANALYTICS_DATA;
+  const [riskData, setRiskData] = useState(RISK_ANALYTICS_DATA);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadRiskAnalytics() {
+      try {
+        const data = await api.getRiskAnalytics();
+        if (isMounted && data && data.distribution) {
+          setRiskData(data);
+        }
+      } catch (err) {
+        console.warn('Failed to load risk analytics from API, using fallback:', err);
+      }
+    }
+    loadRiskAnalytics();
+    return () => { isMounted = false; };
+  }, []);
+
+  const { distribution, hazardContributions, districtComparisons } = riskData;
 
   const totalHabitations = distribution.reduce((sum, d) => sum + d.count, 0);
 
